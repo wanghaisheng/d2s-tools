@@ -14,6 +14,7 @@ import org.data2semantics.platform.execution.Orchestrator;
 import org.data2semantics.platform.execution.ThreadedLocalExecutionProfile;
 import org.data2semantics.platform.reporting.CSVReporter;
 import org.data2semantics.platform.reporting.HTMLReporter;
+import org.data2semantics.platform.reporting.PROVReporter;
 import org.data2semantics.platform.reporting.Reporter;
 import org.data2semantics.platform.resourcespace.ResourceSpace;
 import org.data2semantics.platform.util.WorkflowParser;
@@ -64,7 +65,7 @@ public class Run
     		file = new File(run.arguments.get(0));
     	
     	if(! file.exists())
-    		usageExit("Workflow file ("+run.arguments.get(0)+") does not exist.", parser);
+    		usageExit("Workflow file ("+file+") does not exist.", parser);
     	
     	// -- Beyond this point, errors are not the user's fault, and should not
     	//    cause a usage print. 
@@ -80,6 +81,10 @@ public class Run
     	// -- The workflow object will check the consistency of the inputs and 
     	//    outputs and make sure that everything can be executed.  
     	    	
+    	// Set the status file
+    	File statusRunning = new File(output, "status.running");
+    	statusRunning.createNewFile();
+    	
 		ExecutionProfile executionProfile;
 		
 		switch(execProfile){
@@ -98,15 +103,22 @@ public class Run
 		
 		List<Reporter> reporters = Arrays.asList(
 					new HTMLReporter(workflow, new File(output, "report/")),
-					new CSVReporter(workflow, new File(output, "csv/"))
+					new CSVReporter(workflow, new File(output, "csv/")),
+					new PROVReporter(workflow, new File(output, "prov/"))
 				);
 		
-    	Orchestrator orchestrator = new Orchestrator(workflow,  executionProfile, rp);
+    	Orchestrator orchestrator = new Orchestrator(workflow,  executionProfile, rp, reporters);
     	
     	orchestrator.orchestrate();
     	
     	for(Reporter reporter : reporters)
     		reporter.report();
+    	
+    	// Set status to finished
+    	File statusFinished = new File(output, "status.finished");
+    	statusFinished.createNewFile();
+    	
+    	statusRunning.delete();
     	
     	Global.log().info("Workflow execution finished.");
     }

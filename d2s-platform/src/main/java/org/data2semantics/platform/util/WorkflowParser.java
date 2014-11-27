@@ -5,9 +5,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.data2semantics.platform.Global;
 import org.data2semantics.platform.core.Workflow;
@@ -53,6 +55,9 @@ public class WorkflowParser {
 		// workflow name
 		String workflowName= (String) workflowMap.get("name");
 		builder.name(workflowName);
+		builder.file(yamlFile);
+		
+		
 		/**
 		 * First setup the workflow to contain all modules.
 		 */
@@ -80,11 +85,8 @@ public class WorkflowParser {
 				if(! Global.domainExists(domainPrefix))
 					throw new RuntimeException("Domain "+domainPrefix+" is not known");
 				
-				domain = Global.domain(moduleName);
+				domain = Global.domain(domainPrefix);
 			}
-			
-			
-		
 
 			// get name
 			builder.module(moduleName, domain);
@@ -112,8 +114,10 @@ public class WorkflowParser {
 			
 			for(String outputName : outputTypeMap.keySet())
 			{
+				boolean print = domain.printOutput(sourceTail, outputName);
+
 				String description = domain.outputDescription(sourceTail, outputName);
-				builder.output(moduleName, outputName, description, outputTypeMap.get(outputName));
+				builder.output(moduleName, outputName, description, outputTypeMap.get(outputName), print);
 			}
 		}
 		
@@ -122,7 +126,8 @@ public class WorkflowParser {
 
 	private static void parseInputAndCouples(Workflow.WorkflowBuilder builder,
 			String moduleName, Domain domain, String sourceTail, Map inputMap,
-			List<?> couples) {
+			List<?> couples) 
+	{
 		// Process all the inputs.
 		for (Object inputKey : inputMap.keySet())
 		{
@@ -143,9 +148,11 @@ public class WorkflowParser {
 				DataType inputType = domain.inputType(sourceTail, inputName);
 				
 				String description = domain.inputDescription(sourceTail, inputName);
+				boolean print = domain.printInput(sourceTail, inputName);
+				
 				
 				builder.refInput(moduleName, inputName, description, referencedModule,
-						referencedOutput, inputType);
+						referencedOutput, inputType, print);
 				
 			} else
 			{
@@ -168,7 +175,9 @@ public class WorkflowParser {
 					} else
 					// The input are expecting a list.
 					if(domain.valueMatches(inputValue, inputDataType)){
-						builder.rawInput(moduleName, description, inputName, inputValue, domain.inputType(sourceTail, inputName));
+						boolean print = domain.printInput(sourceTail, inputName);
+						
+						builder.rawInput(moduleName, description, inputName, inputValue, domain.inputType(sourceTail, inputName), print);
 							
 					} else
 						throw new InconsistentWorkflowException("Module "+moduleName+", input " + inputName + ": value ("+inputValue+") does not match the required data type ("+inputDataType+").");
@@ -176,7 +185,9 @@ public class WorkflowParser {
 				}
 				else 
 				if(domain.valueMatches(inputValue, inputDataType)){
-					builder.rawInput(moduleName, description, inputName, inputValue, domain.inputType(sourceTail, inputName));
+					boolean print = domain.printInput(sourceTail, inputName);
+
+					builder.rawInput(moduleName, description, inputName, inputValue, domain.inputType(sourceTail, inputName), print);
 					
 				}
 				
